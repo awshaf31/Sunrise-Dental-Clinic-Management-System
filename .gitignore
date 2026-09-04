@@ -1,0 +1,13 @@
+# Build output
+target/
+
+# Local-only credentials -- never commit this file.
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
