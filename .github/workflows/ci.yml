@@ -1,0 +1,50 @@
+name: CI
+
+# Runs on every push and every pull request, so a change that breaks the
+# suite is caught at the point it is proposed.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build and run the test suite
+        # All 36 tests run against Mockito-mocked DAOs and mocked servlet
+        # request/response objects -- no database service is needed on the
+        # runner, since none of them touch MySQL.
+        run: ./mvnw -B test
+
+      - name: Package the WAR
+        run: ./mvnw -B package -DskipTests
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: target/surefire-reports/*.xml
+          if-no-files-found: warn
+
+      - name: Upload the packaged WAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sunrise-dental-war
+          path: target/sunrise-dental.war
+          if-no-files-found: warn
