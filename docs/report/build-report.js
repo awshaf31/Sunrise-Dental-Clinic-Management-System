@@ -662,6 +662,7 @@ const qa = [
 
   h2(`C.5 Exhaustive Test Plan (${TOTAL_TESTS} Detailed Test Cases)`),
   p(`The full suite comprises ${TOTAL_TESTS} automated tests across seven classes. Every test is listed below, grouped by class, with the precondition shared by that class's tests, the steps each test performs, and the expected result — restated from each test's own @DisplayName so the table can be read as a specification independent of the source code.`),
+  ...figure("docs/screenshots/code/mvn-test.png", 545, "The suite executing from the command line: ./mvnw test, showing all seven classes and the final 36/0/0/0 result"),
   ...testPlanSections,
 
   h2("C.6 Evaluation of Overall Success and Lessons Learned"),
@@ -754,10 +755,7 @@ const refs = [
   hanging("The Apache Software Foundation (2025) Apache Tomcat 11 Documentation. Available at: https://tomcat.apache.org/tomcat-11.0-doc/ (Accessed: 5 September 2026)."),
 
   new Paragraph({ children: [new PageBreak()] }),
-  h1("Appendix A — Additional Interface Evidence"),
-  p("Evidence not already placed inline with the section it supports."),
-
-  h1("Appendix B — Running the System"),
+  h1("Appendix A — Running the System"),
   p("With MySQL 9.0 installed and running locally, apply the schema once:"),
   code("mysql -u root -p < db/00-setup.sql"),
   code("mysql -u root -p < db/01-schema.sql"),
@@ -769,6 +767,22 @@ const refs = [
   p("Sign in as reception / Recept@123 for the receptionist role, or manager / Manager@123 for the manager role. Credentials are supplied via the DB_USERNAME and DB_PASSWORD environment variables, or via a local.properties file (never committed) if those are not set."),
   p("The full test suite is executed with:"),
   code(`./mvnw test                  # ${TOTAL_TESTS} tests, no database required`),
+
+  new Paragraph({ children: [new PageBreak()] }),
+  h1("Appendix B — Source Code Extracts"),
+  p("Four extracts chosen because each is discussed in the body of this report and each is short enough to read as a whole: the composition root that replaces a framework's dependency-injection container, the Factory that resolves a billing rule, the one place a database-level guarantee is turned back into an application exception, and one complete web-service servlet."),
+
+  h3("AppContext — the composition root (referenced in Section B.3 and the architectural class diagram)"),
+  ...figure("docs/screenshots/code/appcontext.png", 545, "AppContext.java, lines 32–75 — every collaborator constructed and wired by hand, once, at startup"),
+
+  h3("BillingStrategyFactory — the Factory pattern in full (referenced in Section B.2)"),
+  ...figure("docs/screenshots/code/factory.png", 500, "BillingStrategyFactory.java in full — self-registration through appliesTo(), and the fail-fast check for two strategies claiming the same treatment"),
+
+  h3("JdbcAppointmentDao.save() — where the database constraint becomes an exception (referenced in Scenario A and Section B.3)"),
+  ...figure("docs/screenshots/code/dao-save.png", 545, "JdbcAppointmentDao.java, lines 106–151 — the INSERT, and translateConstraintViolation() turning a uk_dentist_slot violation back into SlotUnavailableException"),
+
+  h3("AppointmentApiServlet — a complete web-service servlet (referenced in Section B.1)"),
+  ...figure("docs/screenshots/code/servlet.png", 480, "AppointmentApiServlet.java in full — doPost and doGet handling all three /api/appointments endpoint shapes by branching on pathInfo"),
 ];
 
 /* ══════════════════════════════════════════════════════════════════════════
