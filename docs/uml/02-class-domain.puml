@@ -1,0 +1,164 @@
+@startuml class-domain
+' ============================================================================
+' Sunrise Dental Clinic — Class Diagram (domain model, pure Java)
+'
+' Plain Java objects: no persistence annotation maps any of this to a table.
+' The mapping is written explicitly, by hand, in the DAO layer that reads and
+' writes these classes -- see the architecture diagram for where that lives.
+' ============================================================================
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam nodesep 55
+skinparam ranksep 60
+
+skinparam class {
+    BorderColor #0F6E7E
+    BackgroundColor #FFFFFF
+    HeaderBackgroundColor #E4F0F1
+    ArrowColor #2F5560
+    FontColor #12313A
+}
+skinparam note {
+    BorderColor #B5701F
+    BackgroundColor #FBEEDD
+}
+
+class Patient {
+    - id : Long
+    - patientNo : String
+    - name : String
+    - address : String
+    - contactNumber : String
+    - createdAt : LocalDateTime
+    --
+    + getPatientNo() : String
+    + getName() : String
+    + getAddress() : String
+    + getContactNumber() : String
+}
+
+class Appointment {
+    - id : Long
+    - appointmentNo : String
+    - appointmentDate : LocalDate
+    - appointmentTime : LocalTime
+    - status : AppointmentStatus
+    - createdAt : LocalDateTime
+    --
+    + cancel() : void
+    + complete() : void
+    + getAppointmentNo() : String
+    + getAppointmentDate() : LocalDate
+    + getAppointmentTime() : LocalTime
+    + getStatus() : AppointmentStatus
+}
+
+class Bill {
+    - id : Long
+    - consultationFee : BigDecimal
+    - treatmentFee : BigDecimal
+    - totalAmount : BigDecimal
+    - issuedAt : LocalDateTime
+    --
+    + getConsultationFee() : BigDecimal
+    + getTreatmentFee() : BigDecimal
+    + getTotalAmount() : BigDecimal
+}
+
+class Dentist {
+    - id : Long
+    - name : String
+    - specialization : String
+    - active : boolean
+    --
+    + getName() : String
+    + getSpecialization() : String
+    + isActive() : boolean
+}
+
+class TreatmentType {
+    - id : Long
+    - code : TreatmentCode
+    - name : String
+    - baseFee : BigDecimal
+    - active : boolean
+    --
+    + getCode() : TreatmentCode
+    + getName() : String
+    + getBaseFee() : BigDecimal
+}
+
+class Staff {
+    - id : Long
+    - username : String
+    - passwordHash : String
+    - fullName : String
+    - role : StaffRole
+    - active : boolean
+    --
+    + getUsername() : String
+    + getPasswordHash() : String
+    + getFullName() : String
+    + getRole() : StaffRole
+}
+
+class ClinicSetting {
+    - key : String
+    - value : String
+    - description : String
+    --
+    + getKey() : String
+    + getValue() : String
+}
+
+enum AppointmentStatus {
+    SCHEDULED
+    COMPLETED
+    CANCELLED
+}
+enum StaffRole {
+    RECEPTIONIST
+    MANAGER
+}
+enum TreatmentCode {
+    CONSULT
+    CLEANING
+    FILLING
+    EXTRACTION
+    ROOT_CANAL
+    WHITENING
+}
+
+' --- Composition ------------------------------------------------------------
+Appointment "1" *-- "0..1" Bill
+
+' --- Aggregation ------------------------------------------------------------
+Patient "1" o-- "0..*" Appointment
+
+' --- Directed associations ---------------------------------------------------
+Appointment "0..*" --> "1" Dentist : with >
+Appointment "0..*" --> "1" TreatmentType : for >
+Appointment "0..*" --> "1" Staff : booked by >
+Bill "0..*" --> "1" Staff : issued by >
+
+Appointment --> AppointmentStatus
+Staff --> StaffRole
+TreatmentType --> TreatmentCode
+
+note bottom of Appointment
+  uk_dentist_slot: UNIQUE(dentist_id, appointment_date,
+  appointment_time) is enforced by the schema itself,
+  so double booking is impossible even under concurrency --
+  see JdbcAppointmentDao.save(), which catches the
+  constraint violation and translates it back into
+  SlotUnavailableException.
+end note
+
+note right of ClinicSetting
+  Consultation fee and opening hours live here as
+  data, so the manager can change them without a
+  code release. Read by JdbcClinicSettingDao.
+end note
+
+@enduml

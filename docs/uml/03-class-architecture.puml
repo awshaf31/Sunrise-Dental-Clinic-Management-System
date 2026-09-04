@@ -1,0 +1,178 @@
+@startuml class-architecture
+' ============================================================================
+' Sunrise Dental Clinic — Class Diagram (architecture and design patterns)
+'
+' Every dependency arrow points downwards: servlets depend on services,
+' services depend on DAO interfaces, DAOs depend on the database. Nothing
+' depends upwards. AppContext is the single point where all of this is wired
+' together by hand -- the composition root a framework's container would
+' otherwise manage invisibly.
+' ============================================================================
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam nodesep 42
+skinparam ranksep 55
+
+skinparam class {
+    BorderColor #0F6E7E
+    BackgroundColor #FFFFFF
+    HeaderBackgroundColor #E4F0F1
+    ArrowColor #2F5560
+    FontColor #12313A
+}
+skinparam package {
+    BorderColor #5D7D87
+    BackgroundColor #F7F9F9
+    FontColor #12313A
+}
+skinparam note {
+    BorderColor #B5701F
+    BackgroundColor #FBEEDD
+}
+
+package "servlet  ::  presentation + web-service tier" <<Frame>> {
+    class AppointmentApiServlet <<@WebServlet>> {
+        + doPost(req, resp) : void
+        + doGet(req, resp) : void
+    }
+    class AppointmentWebServlet <<@WebServlet>> {
+        + doGet(req, resp) : void
+        + doPost(req, resp) : void
+    }
+    class JsonServlet <<abstract>> {
+        # ctx() : AppContext
+        # handle(resp, action) : void
+        # writeJson(resp, status, body) : void
+    }
+    class ViewServlet <<abstract>> {
+        # ctx() : AppContext
+        # render(req, resp, jsp) : void
+    }
+    class AuthenticationFilter <<@WebFilter>> {
+        + doFilter(req, resp, chain) : void
+    }
+}
+
+AppointmentApiServlet --|> JsonServlet
+AppointmentWebServlet --|> ViewServlet
+
+package "service  ::  business tier" <<Frame>> {
+    class AppointmentService {
+        - clock : Clock
+        --
+        + book(request, staffId) : Appointment
+        + cancel(appointmentNo) : Appointment
+        - validate(request) : void
+    }
+    class BillingService {
+        + issueBill(appointmentNo, staffId) : Bill
+    }
+    class AuthService {
+        + authenticate(username, password) : Staff
+    }
+}
+
+package "billing  <<Strategy + Factory>>" <<Frame>> {
+    interface BillingStrategy <<interface>> {
+        + appliesTo() : Set<TreatmentCode>
+        + treatmentFee(baseFee) : BigDecimal
+    }
+    class ConsultationOnlyBilling
+    class StandardTreatmentBilling
+    class RootCanalBilling
+    class BillingStrategyFactory <<Factory>> {
+        - byTreatment : Map<TreatmentCode, BillingStrategy>
+        --
+        + strategyFor(code) : BillingStrategy
+    }
+}
+
+package "dao  ::  data tier  <<Repository / DAO pattern>>" <<Frame>> {
+    interface AppointmentDao <<interface>> {
+        + findByAppointmentNo(no) : Optional<Appointment>
+        + existsActiveBooking(dentistId, date, time) : boolean
+        + save(appointment) : Appointment
+    }
+    interface BillDao <<interface>>
+    interface StaffDao <<interface>>
+    class JdbcAppointmentDao {
+        + save(appointment) : Appointment
+        - translateConstraintViolation(a, e) : SlotUnavailableException
+    }
+    JdbcAppointmentDao ..|> AppointmentDao
+}
+
+package "util  ::  composition root" <<Frame>> {
+    class AppContext {
+        + authService : AuthService
+        + appointmentService : AppointmentService
+        + billingService : BillingService
+        + appointmentDao : AppointmentDao
+        --
+        + AppContext()
+    }
+    class AppInitializer <<@WebListener>> {
+        + contextInitialized(sce) : void
+        + {static} get(ServletContext) : AppContext
+    }
+    class DbConnection {
+        + {static} get() : Connection
+    }
+    class DbConfig {
+        + {static} get(key) : String
+    }
+}
+
+class DB <<database>> {
+    MySQL 9.0
+    sunrise_dental
+}
+
+AppointmentApiServlet --> AppointmentService : uses
+AppointmentWebServlet --> AppointmentService
+AuthenticationFilter ..> AppInitializer : checks session
+
+AppointmentService --> AppointmentDao
+BillingService --> BillDao
+BillingService --> BillingStrategyFactory
+AuthService --> StaffDao
+
+ConsultationOnlyBilling ..|> BillingStrategy
+StandardTreatmentBilling ..|> BillingStrategy
+RootCanalBilling ..|> BillingStrategy
+BillingStrategyFactory "1" o-- "3..*" BillingStrategy
+
+JdbcAppointmentDao --> DbConnection
+DbConnection --> DbConfig
+DbConnection ..> DB : JDBC
+
+AppInitializer ..> AppContext : builds once, at startup
+AppContext --> AuthService
+AppContext --> AppointmentService
+AppContext --> BillingService
+AppContext --> AppointmentDao
+
+note right of AppContext
+  Every constructor call inside AppContext is
+  dependency injection performed by hand -- what
+  Spring's ApplicationContext would otherwise do
+  behind an annotation. Built once when the web
+  application starts and shared through the
+  ServletContext.
+end note
+
+note bottom of JdbcAppointmentDao
+  Reads and writes Appointment by hand with
+  PreparedStatement and a five-table JOIN --
+  no ORM walks these object references for you.
+end note
+
+note bottom of BillingStrategyFactory
+  Adding a pricing rule adds one class
+  implementing BillingStrategy. This factory
+  indexes it automatically from appliesTo()
+  and is never edited.
+end note
+
+@enduml

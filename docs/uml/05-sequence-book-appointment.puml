@@ -1,0 +1,137 @@
+@startuml sequence-book-appointment
+' ============================================================================
+' Scenario A — Receptionist creates a new Appointment Booking
+' ============================================================================
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+    ArrowColor #2F5560
+    LifeLineBorderColor #5D7D87
+    LifeLineBackgroundColor #E4F0F1
+    ParticipantBorderColor #0F6E7E
+    ParticipantBackgroundColor #E4F0F1
+    ParticipantFontColor #12313A
+    ActorBorderColor #12313A
+    GroupBackgroundColor #E4F0F1
+}
+skinparam note {
+    BorderColor #B5701F
+    BackgroundColor #FBEEDD
+}
+
+actor "Nimali\n(Receptionist)" as User
+
+box "servlet" #F7F9F9
+    participant ":AppointmentWebServlet" as Servlet
+end box
+
+box "service" #F7F9F9
+    participant ":AppointmentService" as Service
+end box
+
+box "dao" #F7F9F9
+    participant ":JdbcPatientDao" as PatientDao
+    participant ":JdbcAppointmentDao" as ApptDao
+end box
+
+database "MySQL" as DB
+
+User -> Servlet : POST /appointments\n(patient, dentist, treatment, date, time)
+activate Servlet
+
+Servlet -> Service : book(bookingRequest, staffId)
+activate Service
+
+Service -> Service : validate(request)
+note right of Service
+  Business rules: contact number format,
+  date not in the past, time within
+  09:00–17:00 opening hours.
+end note
+
+Service -> ApptDao : existsActiveBooking(dentistId, date, time)
+activate ApptDao
+ApptDao -> DB : SELECT COUNT(*) FROM appointment\nWHERE dentist_id=? AND appointment_date=?\nAND appointment_time=? AND status <> 'CANCELLED'
+DB --> ApptDao : 0
+ApptDao --> Service : false
+deactivate ApptDao
+
+Service -> PatientDao : findByContactNumberAndName(contact, name)
+activate PatientDao
+PatientDao -> DB : SELECT * FROM patient WHERE ...
+DB --> PatientDao : empty
+PatientDao --> Service : Optional.empty()
+deactivate PatientDao
+
+alt patient not already on file
+    Service -> PatientDao : save(new Patient(...))
+    activate PatientDao
+    PatientDao -> DB : INSERT INTO patient (...)\nVALUES (...) [RETURN_GENERATED_KEYS]
+    DB --> PatientDao : generated id
+    PatientDao --> Service : patient:Patient
+    deactivate PatientDao
+else returning patient
+    note right of Service
+      The existing record is reused, so a
+      patient's history stays in one place.
+    end note
+end
+
+Service -> ApptDao : countByAppointmentDate(date)
+activate ApptDao
+ApptDao --> Service : 6
+deactivate ApptDao
+Service -> Service : nextAppointmentNo(date)
+note right of Service : Produces APT-20260906-007
+
+Service -> ApptDao : save(appointment)
+activate ApptDao
+ApptDao -> DB : INSERT INTO appointment (...)\nVALUES (...) [RETURN_GENERATED_KEYS]
+DB --> ApptDao : generated id
+ApptDao --> Service : appointment:Appointment
+deactivate ApptDao
+
+Service --> Servlet : Appointment
+deactivate Service
+Servlet --> User : 302 Redirect to /appointments/{no},\n"Appointment booked" flash message
+deactivate Servlet
+
+== Slot already taken ==
+
+User -> Servlet : POST /appointments (same dentist, date, time)
+activate Servlet
+Servlet -> Service : book(bookingRequest, staffId)
+activate Service
+Service -> ApptDao : existsActiveBooking(dentistId, date, time)
+activate ApptDao
+ApptDao --> Service : true
+deactivate ApptDao
+Service -->x Servlet : SlotUnavailableException\n"Dr. Ruwan Silva already has an appointment..."
+deactivate Service
+Servlet --> User : booking form redisplayed with the error,\nevery entered field preserved
+deactivate Servlet
+
+== Lost race: another user commits first ==
+
+note across
+  The existsActiveBooking() check above can be overtaken by a booking that
+  commits between the check and the save. The UNIQUE (dentist_id,
+  appointment_date, appointment_time) constraint on the appointment table is
+  therefore the real guarantee: the insert fails, and JdbcAppointmentDao
+  catches the SQLIntegrityConstraintViolationException / MySQL error 1062
+  and translates it into the same SlotUnavailableException the caller
+  already handles -- correctness never depends on the timing of two
+  concurrent HTTP requests.
+end note
+
+activate Service
+Service -> ApptDao : save(appointment)
+activate ApptDao
+ApptDao -> DB : INSERT INTO appointment (...)
+DB -->x ApptDao : constraint violation on uk_dentist_slot\n(MySQL error code 1062)
+ApptDao -->x Service : SlotUnavailableException\n(translated from the SQL exception)
+deactivate ApptDao
+deactivate Service
+
+@enduml

@@ -1,0 +1,88 @@
+@startuml use-case
+' ============================================================================
+' Sunrise Dental Clinic — Use Case Diagram (pure Java / Servlet implementation)
+' ============================================================================
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam actor {
+    BorderColor #12313A
+    BackgroundColor #FFFFFF
+}
+skinparam usecase {
+    BorderColor #0F6E7E
+    BackgroundColor #E4F0F1
+    ArrowColor #2F5560
+    FontColor #12313A
+}
+skinparam note {
+    BorderColor #B5701F
+    BackgroundColor #FBEEDD
+}
+
+actor "Receptionist" as Reception
+actor "Manager" as Manager
+Manager --|> Reception
+
+rectangle "Sunrise Dental Clinic Management System" {
+    usecase "Log in" as UC_Login
+    usecase "Log out" as UC_Logout
+    usecase "View help" as UC_Help
+
+    usecase "Register new appointment" as UC_Book
+    usecase "Validate booking details" as UC_Validate
+    usecase "Check dentist availability" as UC_CheckSlot
+    usecase "Register new patient" as UC_NewPatient
+
+    usecase "Search appointment\nby number" as UC_Search
+    usecase "Display appointment\ndetails" as UC_Display
+    usecase "Cancel appointment" as UC_Cancel
+
+    usecase "Calculate bill" as UC_Bill
+    usecase "Apply treatment\npricing rule" as UC_Pricing
+    usecase "Print patient receipt" as UC_Print
+
+    usecase "View daily schedule" as UC_Schedule
+    usecase "View revenue report" as UC_Revenue
+}
+
+Reception --> UC_Login
+Reception --> UC_Logout
+Reception --> UC_Help
+Reception --> UC_Book
+Reception --> UC_Search
+Reception --> UC_Cancel
+Reception --> UC_Bill
+Reception --> UC_Schedule
+Manager --> UC_Revenue
+
+UC_Book ..> UC_Validate   : <<include>>
+UC_Book ..> UC_CheckSlot  : <<include>>
+UC_Search ..> UC_Display  : <<include>>
+UC_Bill ..> UC_Pricing    : <<include>>
+
+UC_NewPatient ..> UC_Book : <<extend>>
+UC_Print ..> UC_Bill      : <<extend>>
+
+note right of UC_NewPatient
+  **Extension point:** patient not found
+  A returning patient, matched on name and
+  contact number, reuses their existing record.
+end note
+
+note bottom of UC_CheckSlot
+  Refused first by AppointmentService, then
+  guaranteed by the uk_dentist_slot UNIQUE
+  constraint if two requests race.
+end note
+
+note bottom of UC_Print
+  **Extension point:** receipt requested
+  Reprinting returns the original bill; the
+  patient is never charged twice.
+end note
+
+@enduml

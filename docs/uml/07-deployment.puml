@@ -1,0 +1,93 @@
+@startuml deployment
+' ============================================================================
+' Sunrise Dental Clinic — Deployment Diagram (pure Java)
+'
+' One WAR, three tiers inside it, deployed to a standalone Tomcat. Evidence
+' for the "distributed application with web services" requirement is the
+' /api/* endpoint family: reachable over HTTP independently of any browser
+' session, returning JSON, exactly as a client other than this project's own
+' JSP pages could call it.
+' ============================================================================
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+skinparam node {
+    BorderColor #0F6E7E
+    BackgroundColor #F7F9F9
+    FontColor #12313A
+}
+skinparam artifact {
+    BorderColor #5D7D87
+    BackgroundColor #FFFFFF
+}
+skinparam database {
+    BorderColor #0F6E7E
+    BackgroundColor #E4F0F1
+}
+skinparam note {
+    BorderColor #B5701F
+    BackgroundColor #FBEEDD
+}
+
+actor "Reception desk\nstaff" as User
+
+node "Client workstation" as Client {
+    artifact "Web browser" as Browser
+}
+
+node "Application server\n(Apache Tomcat 11)" as AppServer {
+    artifact "sunrise-dental.war" as War {
+        component "JSP views\n(presentation)" as Views
+        component "Servlets: /api/*\n(web services)" as ApiServlets
+        component "Servlets: /*\n(JSP-rendering)" as WebServlets
+        component "AuthenticationFilter" as Filter
+        component "Service layer\n(business logic)" as Services
+        component "DAO layer\n(JDBC)" as Daos
+    }
+}
+
+node "Database server" as DbServer {
+    database "MySQL 9.0\nsunrise_dental" as DB {
+        artifact "Tables + constraints" as Tables
+        artifact "sp_daily_revenue" as Proc
+        artifact "trg_appointment_status_audit" as Trigger
+    }
+}
+
+User --> Browser
+Browser --> Filter : HTTP\nport 8080
+Filter --> WebServlets : session-authenticated
+Filter --> ApiServlets : session-authenticated
+WebServlets --> Views
+WebServlets --> Services
+ApiServlets --> Services
+Services --> Daos
+Daos --> DB : JDBC\nMySQL Connector/J, port 3306
+
+note right of ApiServlets
+  Returns JSON with no dependency on the JSP
+  views. This is the web-service surface: a
+  client other than this project's own pages
+  could call POST /api/appointments directly
+  over HTTP and get the same JSON contract,
+  proven in the test plan by
+  AppointmentApiServletTest and by curl.
+end note
+
+note right of Filter
+  Default-deny across the whole application,
+  with an explicit allow-list for /login,
+  /logout, /css, /js and /favicon.ico. A page
+  added later is protected unless someone
+  deliberately exempts it.
+end note
+
+note bottom of DB
+  Constraints, the audit trigger and the
+  revenue procedure live with the data, so
+  they hold regardless of which servlet
+  issued the query.
+end note
+
+@enduml
