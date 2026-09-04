@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taglib xmlns="https://jakarta.ee/xml/ns/jakartaee"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-jsptaglibrary_3_0.xsd"
+        version="3.0">
+
+    <description>Local JSP functions for this application.</description>
+    <tlib-version>1.0</tlib-version>
+    <short-name>clinic</short-name>
+    <uri>https://sunrisedental.local/functions</uri>
+
+    <function>
+        <description>Formats a BigDecimal as 1,500.00</description>
+        <name>money</name>
+        <function-class>lk.icbt.clinic.util.Money</function-class>
+        <function-signature>java.lang.String format(java.math.BigDecimal)</function-signature>
+    </function>
+
+</taglib>

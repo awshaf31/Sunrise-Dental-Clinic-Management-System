@@ -1,0 +1,320 @@
+/* ==========================================================================
+   Sunrise Dental Clinic — reception desk interface
+
+   Designed for one situation: a receptionist with a patient standing in front
+   of them. Everything is tuned for speed of reading and certainty of action,
+   not for browsing. The day rail is the centrepiece — it replaces the paper
+   appointment book the clinic used, and it makes a clash visible before the
+   form is ever submitted.
+   ========================================================================== */
+
+:root {
+    /* Ink and paper. Cool, clinical, but warmer than a pure grey. */
+    --ink:        #12313a;
+    --ink-2:      #2f5560;
+    --ink-3:      #5d7d87;
+    --paper:      #f2f5f5;
+    --card:       #ffffff;
+    --rule:       #dde5e6;
+    --rule-soft:  #eaefef;
+
+    /* One teal for anything actionable. */
+    --teal:       #0f6e7e;
+    --teal-dark:  #0a5260;
+    --teal-wash:  #e4f0f1;
+
+    /* Amber means "this slot is taken". Used nowhere else, so it reads instantly. */
+    --amber:      #b5701f;
+    --amber-wash: #fbeedd;
+
+    --rose:       #a83b36;
+    --rose-wash:  #fbe9e8;
+    --sage:       #2f6b47;
+    --sage-wash:  #e5f1e9;
+
+    --display: "Bricolage Grotesque", "Trebuchet MS", sans-serif;
+    --body:    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --radius: 6px;
+    --shadow: 0 1px 2px rgba(18, 49, 58, .06), 0 4px 12px rgba(18, 49, 58, .05);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--paper);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -.015em; margin: 0; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: .95rem; }
+
+a { color: var(--teal); }
+
+/* Times, fees and appointment references are data: set them as data. */
+.mono, time, .ref, .amount { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Every interactive element must show where the keyboard is. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   Application frame: fixed menu rail, scrolling work area
+   -------------------------------------------------------------------------- */
+
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+
+.sidebar {
+    background: var(--ink);
+    color: #cfe0e3;
+    padding: 22px 0;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.brand { padding: 0 22px 20px; border-bottom: 1px solid rgba(255, 255, 255, .09); }
+.brand-mark { font-family: var(--display); font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.25; }
+.brand-sub { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: #7fa3ab; margin-top: 5px; }
+
+.menu { list-style: none; margin: 16px 0 0; padding: 0 12px; flex: 1; }
+.menu li { margin-bottom: 2px; }
+.menu a {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 9px 12px; border-radius: var(--radius);
+    color: #cfe0e3; text-decoration: none; font-size: .9rem;
+}
+.menu a:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.menu a[aria-current="page"] { background: var(--teal); color: #fff; font-weight: 500; }
+/* The menu is numbered because the brief specifies a numbered operator menu,
+   and staff are trained against those numbers. */
+.menu .num { font-family: var(--mono); font-size: .72rem; opacity: .65; }
+
+.who { padding: 16px 22px 0; border-top: 1px solid rgba(255, 255, 255, .09); margin-top: 12px; }
+.who-name { color: #fff; font-size: .88rem; font-weight: 500; }
+.who-role { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #7fa3ab; margin-top: 2px; }
+.who a { display: inline-block; margin-top: 10px; color: #9dc4cb; font-size: .82rem; }
+
+.main { padding: 26px 30px 60px; max-width: 1180px; }
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+.eyebrow { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+
+/* --------------------------------------------------------------------------
+   Surfaces
+   -------------------------------------------------------------------------- */
+
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card-head { padding: 14px 18px; border-bottom: 1px solid var(--rule-soft); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.card-body { padding: 18px; }
+
+.grid { display: grid; gap: 18px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-rail { grid-template-columns: 260px 1fr; }
+
+/* --------------------------------------------------------------------------
+   The day rail — the signature element.
+
+   A ruled column of the clinic's opening hours. A booked slot is a solid amber
+   block; a free slot is an empty hairline. The receptionist reads the shape of
+   the day, not a list of rows, and sees a clash before submitting the form.
+   -------------------------------------------------------------------------- */
+
+.rail { --slot-h: 30px; }
+.rail-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.rail-title { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.rail-count { font-family: var(--mono); font-size: .78rem; color: var(--ink-2); }
+
+.rail-track { border-top: 1px solid var(--rule); }
+
+.slot {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    align-items: center;
+    min-height: var(--slot-h);
+    border-bottom: 1px solid var(--rule-soft);
+}
+.slot-time { font-family: var(--mono); font-size: .74rem; color: var(--ink-3); padding-right: 8px; }
+.slot-body { height: calc(var(--slot-h) - 9px); border-radius: 3px; }
+
+/* Free: an empty ruled line, like an unfilled row in the paper book. */
+.slot.is-free .slot-body { background: var(--rule-soft); opacity: .5; height: 2px; align-self: center; }
+
+/* Taken: solid amber. The one place amber is used in the whole interface. */
+.slot.is-taken .slot-body {
+    background: var(--amber-wash);
+    border-left: 3px solid var(--amber);
+    padding: 0 8px;
+    display: flex; align-items: center;
+    font-size: .78rem; color: #7a4a12; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.slot.is-selected .slot-body { background: var(--teal-wash); border-left: 3px solid var(--teal); color: var(--teal-dark); }
+.slot.is-selected.is-taken .slot-body { background: var(--rose-wash); border-left-color: var(--rose); color: var(--rose); }
+
+.rail-legend { display: flex; gap: 14px; margin-top: 10px; font-size: .74rem; color: var(--ink-3); }
+.rail-legend span { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 14px; height: 8px; border-radius: 2px; }
+.swatch.free { background: var(--rule); }
+.swatch.taken { background: var(--amber); }
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th {
+    text-align: left; padding: 9px 12px;
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-3); border-bottom: 1px solid var(--rule);
+    font-weight: 500;
+}
+td { padding: 11px 12px; border-bottom: 1px solid var(--rule-soft); }
+tbody tr:hover { background: #fafcfc; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+tfoot td { border-top: 2px solid var(--rule); border-bottom: none; font-weight: 600; }
+
+.empty { padding: 34px 18px; text-align: center; color: var(--ink-3); }
+.empty p { margin: 0 0 14px; }
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+
+.field { margin-bottom: 15px; }
+.field label { display: block; font-size: .82rem; font-weight: 500; margin-bottom: 5px; color: var(--ink-2); }
+.field .hint { font-size: .76rem; color: var(--ink-3); margin-top: 4px; }
+
+input[type=text], input[type=password], input[type=date], input[type=time], input[type=tel], select, textarea {
+    width: 100%; padding: 9px 11px;
+    border: 1px solid var(--rule); border-radius: var(--radius);
+    background: #fff; color: var(--ink);
+    font-family: var(--body); font-size: .92rem;
+}
+input[type=date], input[type=time], input.ref { font-family: var(--mono); }
+input:focus, select:focus, textarea:focus { border-color: var(--teal); }
+
+.field.has-error input, .field.has-error select { border-color: var(--rose); background: #fffbfb; }
+.field-error { color: var(--rose); font-size: .78rem; margin-top: 4px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--rule-soft); }
+
+/* --------------------------------------------------------------------------
+   Buttons — one primary action per screen
+   -------------------------------------------------------------------------- */
+
+.btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: var(--radius);
+    border: 1px solid transparent; cursor: pointer;
+    font-family: var(--body); font-size: .88rem; font-weight: 500;
+    text-decoration: none; white-space: nowrap;
+}
+.btn-primary { background: var(--teal); color: #fff; }
+.btn-primary:hover { background: var(--teal-dark); }
+.btn-secondary { background: #fff; color: var(--ink-2); border-color: var(--rule); }
+.btn-secondary:hover { border-color: var(--ink-3); color: var(--ink); }
+.btn-danger { background: #fff; color: var(--rose); border-color: #e8c9c7; }
+.btn-danger:hover { background: var(--rose-wash); }
+.btn-sm { padding: 6px 11px; font-size: .82rem; }
+
+/* --------------------------------------------------------------------------
+   Messages — say what happened and what to do next
+   -------------------------------------------------------------------------- */
+
+.alert { padding: 12px 15px; border-radius: var(--radius); margin-bottom: 18px; font-size: .88rem; border-left: 3px solid; }
+.alert-success { background: var(--sage-wash); border-color: var(--sage); color: #235136; }
+.alert-error   { background: var(--rose-wash); border-color: var(--rose); color: #832e2a; }
+.alert-notice  { background: var(--teal-wash); border-color: var(--teal); color: var(--teal-dark); }
+.alert strong { display: block; margin-bottom: 2px; }
+
+.badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+}
+.badge-scheduled { background: var(--teal-wash); color: var(--teal-dark); }
+.badge-completed { background: var(--sage-wash); color: #235136; }
+.badge-cancelled { background: var(--rose-wash); color: #832e2a; }
+
+/* --------------------------------------------------------------------------
+   Detail lists and figures
+   -------------------------------------------------------------------------- */
+
+.detail { display: grid; grid-template-columns: 150px 1fr; gap: 0; }
+.detail dt { padding: 9px 0; font-size: .8rem; color: var(--ink-3); border-bottom: 1px solid var(--rule-soft); }
+.detail dd { padding: 9px 0; margin: 0; border-bottom: 1px solid var(--rule-soft); font-size: .9rem; }
+
+.stat-row { display: flex; gap: 26px; }
+.stat-value { font-family: var(--mono); font-size: 1.55rem; font-weight: 500; line-height: 1.1; }
+.stat-label { font-size: .74rem; color: var(--ink-3); margin-top: 3px; }
+
+/* --------------------------------------------------------------------------
+   Login — the one page outside the frame
+   -------------------------------------------------------------------------- */
+
+.login-page { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.login-aside { background: var(--ink); color: #cfe0e3; padding: 46px; display: flex; flex-direction: column; justify-content: space-between; }
+.login-aside h1 { color: #fff; font-size: 2rem; line-height: 1.15; max-width: 11ch; }
+.login-aside p { color: #9dc4cb; max-width: 34ch; font-size: .92rem; }
+
+/* A miniature day rail as the login artwork: the product's whole idea in one image. */
+.login-rail { display: flex; flex-direction: column; gap: 5px; max-width: 210px; }
+.login-rail i { display: block; height: 7px; border-radius: 2px; background: rgba(255, 255, 255, .1); }
+.login-rail i.on { background: var(--amber); opacity: .85; }
+
+.login-form-wrap { display: flex; align-items: center; justify-content: center; padding: 40px; }
+.login-form { width: 100%; max-width: 340px; }
+
+/* --------------------------------------------------------------------------
+   Receipt — must print cleanly on the clinic's printer
+   -------------------------------------------------------------------------- */
+
+.receipt { max-width: 460px; background: #fff; border: 1px solid var(--rule); border-radius: var(--radius); padding: 26px; }
+.receipt-head { text-align: center; padding-bottom: 16px; border-bottom: 1px dashed var(--rule); }
+.receipt-head h2 { font-size: 1.15rem; }
+.receipt-head .mono { font-size: .74rem; color: var(--ink-3); display: block; margin-top: 4px; }
+.receipt-lines { margin: 16px 0; }
+.receipt-line { display: flex; justify-content: space-between; padding: 7px 0; font-size: .88rem; }
+.receipt-total { display: flex; justify-content: space-between; padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--ink); font-weight: 600; }
+.receipt-total .amount { font-size: 1.15rem; }
+.receipt-foot { margin-top: 20px; padding-top: 14px; border-top: 1px dashed var(--rule); text-align: center; font-size: .76rem; color: var(--ink-3); }
+
+@media print {
+    .sidebar, .page-head, .actions, .no-print { display: none !important; }
+    .app { display: block; }
+    .main { padding: 0; max-width: none; }
+    .receipt { border: none; box-shadow: none; max-width: none; }
+    body { background: #fff; }
+}
+
+/* --------------------------------------------------------------------------
+   Narrow screens — the front desk sometimes runs on a small laptop
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; }
+    .menu { display: flex; flex-wrap: wrap; gap: 4px; }
+    .menu li { margin: 0; }
+    .grid-2, .grid-rail, .form-row { grid-template-columns: 1fr; }
+    .login-page { grid-template-columns: 1fr; }
+    .login-aside { padding: 30px; }
+    .main { padding: 20px 16px 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

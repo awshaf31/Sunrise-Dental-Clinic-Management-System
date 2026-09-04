@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                              https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>Sunrise Dental Clinic Management System</display-name>
+
+    <!--
+      Servlets, filters and the startup listener are all registered through
+      @WebServlet / @WebFilter / @WebListener annotations on their classes
+      (see AppointmentApiServlet, AuthenticationFilter, AppInitializer, etc.),
+      not here. This file only carries configuration that has no annotation
+      equivalent: the session policy.
+    -->
+
+    <session-config>
+        <!-- Matches the presentation tier's inactivity timeout in the Spring
+             version of this system. -->
+        <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+
+</web-app>
