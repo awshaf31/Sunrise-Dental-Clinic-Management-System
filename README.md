@@ -1,36 +1,46 @@
 # Sunrise Dental Clinic Management System
 
-Appointment and patient management system for a dental clinic — booking,
-scheduling, billing, and reporting for receptionists and managers.
+<!-- Replace <owner>/<repo> once this is pushed to GitHub. -->
+![CI](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)
+![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
+![Build](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven&logoColor=white)
+![Database](https://img.shields.io/badge/Database-MySQL_8-4479A1?logo=mysql&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-JUnit_5-25A162?logo=junit5&logoColor=white)
 
-Built deliberately **without an application framework**: Jakarta Servlets and
-JSP for the web tier, plain JDBC for persistence. The only third-party
-libraries are [Gson](https://github.com/google/gson) (JSON), [BCrypt](https://github.com/patrickfav/bcrypt)
-(password hashing), and the JUnit/Mockito test stack — none of which run the
+A dental clinic booking, billing, and patient-management system built
+deliberately **without an application framework** — Jakarta Servlets and JSP
+for the web tier, plain JDBC for persistence — to show what a framework like
+Spring actually does for you once it's taken away.
+
+The only third-party libraries are [Gson](https://github.com/google/gson)
+(JSON) and [BCrypt](https://github.com/patrickfav/bcrypt) (password
+hashing), plus the JUnit/Mockito test stack. None of them run the
 application or manage its objects the way a framework's container would.
+
+---
 
 ## Features
 
-- **Authentication** — session-based login with BCrypt-hashed passwords and
-  role-based access (`RECEPTIONIST`, `MANAGER`)
-- **Appointment booking** — a day-rail availability view, double-booking
-  prevention, and appointment status tracking
-- **Billing** — itemized bills against treatment codes, with receipt view
-- **Reporting** — manager-only usage and revenue reports
-- **Patient records** — create, search, and view patient history
+| | |
+|---|---|
+| **Authentication** | Session-based login, BCrypt-hashed passwords, role-based access (`RECEPTIONIST`, `MANAGER`) |
+| **Appointment booking** | Day-rail availability view, double-booking prevention, status tracking |
+| **Billing** | Itemized bills against treatment codes, with a receipt view |
+| **Reporting** | Manager-only usage and revenue reports |
+| **Patient records** | Create, search, and view patient history |
 
 ## Tech stack
 
-| Layer          | Choice                                              |
-|----------------|------------------------------------------------------|
-| Language       | Java 21                                             |
-| Web tier       | Jakarta Servlets 6.1 + JSP/JSTL (no MVC framework)  |
-| Persistence    | Plain JDBC (hand-written DAOs, no ORM)              |
-| Database       | MySQL 8+                                            |
-| Build          | Maven (wrapper included, no local install needed)   |
-| Test           | JUnit 5, Mockito, AssertJ, H2 (in-memory, DAO tests)|
-| Dev server     | Embedded Tomcat (IDE convenience only — see below)  |
-| Deploy target  | Standalone Apache Tomcat 10.1+ / 11.x                |
+| Layer         | Choice                                               |
+|---------------|-------------------------------------------------------|
+| Language      | Java 21                                                |
+| Web tier      | Jakarta Servlets 6.1 + JSP/JSTL (no MVC framework)     |
+| Persistence   | Plain JDBC — hand-written DAOs, no ORM                 |
+| Database      | MySQL 8+                                               |
+| Build         | Maven (wrapper included, no local install needed)      |
+| Test          | JUnit 5, Mockito, AssertJ, H2 (in-memory, DAO tests)   |
+| Dev server    | Embedded Tomcat — IDE convenience only, see below      |
+| Deploy target | Standalone Apache Tomcat 10.1+ / 11.x                  |
 
 ## Project structure
 
@@ -45,12 +55,13 @@ src/main/java/lk/icbt/clinic/
   billing/    invoice/bill calculation
   util/       DB connection & config helpers
   exception/  application-specific exceptions
+  Main.java   embedded-Tomcat entry point for running from an IDE
 
 src/main/webapp/   JSP views, static CSS/JS
-src/main/java/.../Main.java   embedded-Tomcat entry point for running from an IDE
-
-db/   versioned SQL: setup, schema, stored procedures, seed data
+db/                versioned SQL: setup, schema, stored procedures, seed data
 ```
+
+---
 
 ## Running locally
 
@@ -118,6 +129,8 @@ and deploy `target/sunrise-dental.war` to a standalone Apache Tomcat 10.1+
 or 11.x, with `DB_USERNAME`/`DB_PASSWORD`/`DB_URL` set as real environment
 variables on that server.
 
+---
+
 ## Testing
 
 ```bash
@@ -139,9 +152,5 @@ excluded by default; run them explicitly with:
 ## Continuous integration
 
 Every push and pull request runs the test suite and packages the WAR via
-GitHub Actions (`.github/workflows/ci.yml`). Once this repo is pushed to
-GitHub, add a status badge at the top of this file:
-
-```markdown
-![CI](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)
-```
+GitHub Actions (`.github/workflows/ci.yml`), publishing the surefire
+reports and the built WAR as workflow artifacts.
